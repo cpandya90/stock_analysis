@@ -7,40 +7,6 @@ Original file is located at
     https://colab.research.google.com/drive/1z9lmDV-lWeU6cdJlFWN8R3EG8wbwj3Hc
 """
 
-from google.colab import auth
-import gspread
-from google.auth import default
-
-try:
-    # Authenticate to Google Sheets
-    print("Starting authentication... Please follow the pop-up instructions.")
-    auth.authenticate_user()
-    creds, _ = default()
-    gc = gspread.authorize(creds)
-    print("Authentication successful.")
-except Exception as e:
-    print(f"Authentication failed: {e}")
-    print("Tip: Ensure your browser allows pop-ups and you are signed into your Google account.")
-
-def get_ticker_from_sheet(spreadsheet_name, sheet_name='Sheet1', cell='A1'):
-    try:
-        # Open the spreadsheet by name
-        spreadsheet = gc.open(spreadsheet_name)
-        sheet = spreadsheet.worksheet(sheet_name)
-        # Get the value from the specified cell
-        ticker = sheet.acell(cell).value
-        return ticker.strip().upper()
-    except Exception as e:
-        print(f"Error fetching from sheet: {e}")
-        return None
-
-# Usage Example:
-SHEET_NAME = 'Stock_Analysis'
-TICKER_FROM_SHEET = get_ticker_from_sheet(SHEET_NAME, sheet_name='Dashboard', cell='B3')
-if TICKER_FROM_SHEET:
-    TICKER_TO_FETCH = TICKER_FROM_SHEET
-    print(f'Fetched ticker: {TICKER_TO_FETCH}')
-
 import yfinance as yf
 import pandas as pd
 
@@ -59,7 +25,7 @@ def get_recent_closing_prices(ticker, count=2500):
     return close_prices
 
 # Define ticker
-# TICKER_TO_FETCH = 'SUZLON'
+TICKER_TO_FETCH = 'AAPL'
 prices = get_recent_closing_prices(TICKER_TO_FETCH)
 
 if isinstance(prices, pd.Series) or isinstance(prices, pd.DataFrame):
@@ -132,40 +98,6 @@ else:
     status = 'above' if prices_ema['Signal'].iloc[-1] else 'below'
     print(f"No 20/200 EMA crossovers detected. The 20-day EMA has remained consistently {status} the 200-day EMA.")
 
-def update_sheet_with_crossovers(spreadsheet_name, df_crossovers, sheet_name='EMA_Crossovers'):
-    try:
-        # Open the spreadsheet
-        spreadsheet = gc.open(spreadsheet_name)
-
-        # Try to find the worksheet, create it if it doesn't exist
-        try:
-            worksheet = spreadsheet.worksheet(sheet_name)
-            worksheet.clear()
-        except gspread.exceptions.WorksheetNotFound:
-            worksheet = spreadsheet.add_worksheet(title=sheet_name, rows="100", cols="20")
-
-        # Prepare the last 10 crossovers
-        last_10 = df_crossovers.tail(10).copy()
-        last_10.reset_index(inplace=True)
-
-        # Format Date for JSON serializability
-        last_10['Date'] = last_10['Date'].dt.strftime('%Y-%m-%d')
-
-        # Select columns and convert to list of lists for gspread
-        header = ['Date', 'Close', '20-Day EMA', '200-Day EMA', 'Type']
-        data_to_upload = [header] + last_10[header].values.tolist()
-
-        # Upload to sheet using named arguments to avoid deprecation warning
-        worksheet.update(values=data_to_upload, range_name='A1')
-        print(f"Successfully updated '{sheet_name}' with the last {len(last_10)} crossover events.")
-    except Exception as e:
-        print(f"Error updating sheet: {e}")
-
-# Execute the update
-if not crossovers_only.empty:
-    update_sheet_with_crossovers(SHEET_NAME, crossovers_only)
-else:
-    print("No crossovers available to write to Google Sheets.")
 
 # BUY: If you have no shares and a 'Golden Cross' is active,
 # it spends all capital to buy shares at the current price.
