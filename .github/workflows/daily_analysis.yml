@@ -7,11 +7,11 @@ on:
   workflow_dispatch:  # Allow manual trigger from GitHub UI
 
 permissions:
-  contents: write  # Required to push the output CSV back to the repo
+  contents: write  # Required to push output files back to the repo
 
 jobs:
   analyze:
-    name: Fetch & Compute SMA/EMA
+    name: Fetch, Compute SMA/EMA & Generate Charts
     runs-on: ubuntu-latest
 
     steps:
@@ -41,24 +41,24 @@ jobs:
           pip install -r requirements.txt
 
       # ---------------------------------------------------------------
-      # 4. Run analysis script
+      # 4. Run analysis + chart generation script
       # ---------------------------------------------------------------
-      - name: Run SMA/EMA analysis
+      - name: Run SMA/EMA analysis and generate charts
         run: python sma_ema_analysis.py
 
       # ---------------------------------------------------------------
-      # 5. Commit and push output/results.csv back to the repo
+      # 5. Commit and push output/results.csv + output/charts/*.png
       # ---------------------------------------------------------------
       - name: Commit and push results
         run: |
           git config --global user.name  "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add output/results.csv
+          git add output/results.csv output/charts/
           # Only commit if there are actual changes
           if git diff --cached --quiet; then
             echo "No changes to commit — results are identical to last run."
           else
-            git commit -m "chore: update SMA/EMA results [$(date -u '+%Y-%m-%d %H:%M UTC')]"
+            git commit -m "chore: update SMA/EMA results & charts [$(date -u '+%Y-%m-%d %H:%M UTC')]"
             git push
           fi
         env:
