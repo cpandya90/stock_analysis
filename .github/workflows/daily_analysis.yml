@@ -1,0 +1,65 @@
+name: Daily Stock SMA/EMA Analysis
+
+on:
+  schedule:
+    # Runs at 03:00 UTC every Tue–Sat = 8:00 PM PST (UTC-7) Mon–Fri
+    - cron: '0 3 * * 2-6'
+  workflow_dispatch:  # Allow manual trigger from GitHub UI
+
+permissions:
+  contents: write  # Required to push the output CSV back to the repo
+
+jobs:
+  analyze:
+    name: Fetch & Compute SMA/EMA
+    runs-on: ubuntu-latest
+
+    steps:
+      # ---------------------------------------------------------------
+      # 1. Checkout repository
+      # ---------------------------------------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      # ---------------------------------------------------------------
+      # 2. Set up Python
+      # ---------------------------------------------------------------
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      # ---------------------------------------------------------------
+      # 3. Install dependencies
+      # ---------------------------------------------------------------
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # ---------------------------------------------------------------
+      # 4. Run analysis script
+      # ---------------------------------------------------------------
+      - name: Run SMA/EMA analysis
+        run: python sma_ema_analysis.py
+
+      # ---------------------------------------------------------------
+      # 5. Commit and push output/results.csv back to the repo
+      # ---------------------------------------------------------------
+      - name: Commit and push results
+        run: |
+          git config --global user.name  "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add output/results.csv
+          # Only commit if there are actual changes
+          if git diff --cached --quiet; then
+            echo "No changes to commit — results are identical to last run."
+          else
+            git commit -m "chore: update SMA/EMA results [$(date -u '+%Y-%m-%d %H:%M UTC')]"
+            git push
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
