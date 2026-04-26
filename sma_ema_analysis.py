@@ -2,10 +2,12 @@
 Stock SMA/EMA Analysis
 ======================
 Reads tickers from stocks.txt, fetches 5 years of historical OHLCV data
-via yfinance, computes 20/50/100/200-day SMA and EMA for each ticker,
-saves all results into a single combined CSV (output/results.csv), and
-generates one PNG chart per ticker (output/charts/<TICKER>.png) showing
-the closing price overlaid with 20/50/200-day SMA and EMA lines.
+via yfinance, computes 20/50/100/200-day SMA and EMA for each ticker, and:
+
+  • Saves one CSV per ticker  →  output/csv/<TICKER>.csv
+  • Saves a combined CSV      →  output/results.csv
+  • Saves one PNG chart per ticker → output/charts/<TICKER>.png
+    (Close price + SMA/EMA 20/50/200-day, dark theme, with volume panel)
 
 Schedule: Runs daily at 8 PM PST via GitHub Actions.
 """
@@ -28,6 +30,7 @@ import yfinance as yf
 STOCKS_FILE   = "stocks.txt"
 OUTPUT_DIR    = "output"
 OUTPUT_FILE   = os.path.join(OUTPUT_DIR, "results.csv")
+CSV_DIR       = os.path.join(OUTPUT_DIR, "csv")      # per-stock CSVs
 CHARTS_DIR    = os.path.join(OUTPUT_DIR, "charts")
 HISTORY_PERIOD = "5y"
 SMA_EMA_WINDOWS = [20, 50, 100, 200]
@@ -150,13 +153,23 @@ def build_combined_dataframe(tickers: list[str]) -> tuple[pd.DataFrame, dict[str
 
 
 def save_results(df: pd.DataFrame, filepath: str) -> None:
-    """Save the combined DataFrame to CSV."""
+    """Save the combined (all-tickers) DataFrame to a single CSV."""
     os.makedirs(os.path.dirname(filepath), exist_ok=True)
     df.to_csv(filepath, index=False, float_format="%.4f")
     logger.info(
-        f"Results saved to {filepath}  "
+        f"Combined CSV saved → {filepath}  "
         f"({len(df):,} rows, {df['Ticker'].nunique()} tickers)"
     )
+
+
+def save_individual_csvs(per_stock: dict[str, pd.DataFrame], csv_dir: str) -> None:
+    """Save one CSV file per ticker to csv_dir/<TICKER>.csv."""
+    os.makedirs(csv_dir, exist_ok=True)
+    logger.info(f"Saving individual CSVs → {csv_dir}/")
+    for ticker, df in per_stock.items():
+        out_path = os.path.join(csv_dir, f"{ticker}.csv")
+        df.to_csv(out_path, index=False, float_format="%.4f")
+        logger.info(f"  {ticker}: saved {len(df):,} rows → {out_path}")
 
 
 # ---------------------------------------------------------------------------
@@ -284,6 +297,7 @@ def main() -> None:
     tickers = load_tickers(STOCKS_FILE)
     combined_df, per_stock = build_combined_dataframe(tickers)
     save_results(combined_df, OUTPUT_FILE)
+    save_individual_csvs(per_stock, CSV_DIR)
     generate_all_charts(per_stock, CHARTS_DIR)
 
     logger.info("Analysis complete.")
