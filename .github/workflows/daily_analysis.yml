@@ -2,8 +2,8 @@ name: Daily Stock SMA/EMA Analysis  # per-stock CSVs + combined CSV + charts
 
 on:
   schedule:
-    # Runs at 03:00 UTC every Tue–Sat = 8:00 PM PST (UTC-7) Mon–Fri
-    - cron: '0 3 * * 2-6'
+    # Runs at 01:00 UTC every Tue–Sat = 6:00 PM PST (UTC-7) Mon–Fri
+    - cron: '0 1 * * 2-6'
   workflow_dispatch:  # Allow manual trigger from GitHub UI
 
 permissions:
